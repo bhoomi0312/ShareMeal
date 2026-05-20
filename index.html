@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShareMeal | Zero Waste Campus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .tab-active { background-color: #047857; color: white; }
+        .tab-inactive { background-color: #e5e7eb; color: #374151; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800 selection:bg-emerald-200">
+
+    <nav class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-10">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-2">
+                <span class="text-3xl">🍲</span>
+                <h1 class="text-2xl font-extrabold tracking-tight text-emerald-800">ShareMeal</h1>
+            </div>
+            <div class="flex bg-gray-200 p-1 rounded-lg shadow-inner">
+                <button id="btn-admin" onclick="switchView('admin')" class="px-6 py-2 rounded-md font-medium text-sm transition-all duration-200 tab-active">Mess Admin</button>
+                <button id="btn-recipient" onclick="switchView('recipient')" class="px-6 py-2 rounded-md font-medium text-sm transition-all duration-200 tab-inactive">Claim Food</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-5xl mx-auto mt-8 px-4 pb-12">
+
+        <div id="admin-view" class="space-y-8 animate-fade-in">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                
+                <div class="md:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
+                    <h2 class="text-xl font-bold mb-5 text-gray-800">List Surplus Food</h2>
+                    <form id="postFoodForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-600 mb-1">Food Details</label>
+                            <input type="text" id="itemName" placeholder="e.g. Dal Makhani & Roti" required class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-1/2">
+                                <label class="block text-sm font-semibold text-gray-600 mb-1">Servings</label>
+                                <input type="number" id="servings" placeholder="Qty" required min="1" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                            </div>
+                            <div class="w-1/2">
+                                <label class="block text-sm font-semibold text-gray-600 mb-1">Fresh For (Hrs)</label>
+                                <input type="number" id="freshHours" placeholder="e.g. 4" required min="1" max="24" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-600 mb-1">Pickup Location</label>
+                            <input type="text" id="location" placeholder="e.g. Gate 2, Hostel Mess" required class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-xl hover:bg-emerald-700 font-bold shadow-md hover:shadow-lg transition-all active:scale-95">Post to Network</button>
+                    </form>
+                    <div id="adminMessage" class="mt-4 p-3 bg-emerald-100 text-emerald-800 rounded-lg text-sm font-semibold hidden text-center">✅ Food posted successfully!</div>
+                </div>
+
+                <div class="md:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-center mb-5">
+                        <h2 class="text-xl font-bold text-gray-800">Live Tracker & Claim Logs</h2>
+                        <button onclick="loadAdminDashboard()" class="text-emerald-600 hover:text-emerald-800 text-sm font-semibold flex items-center gap-1">↻ Refresh</button>
+                    </div>
+                    <div id="adminTrackerList" class="space-y-4">
+                        </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="recipient-view" class="hidden animate-fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Available Rescues</h2>
+                    <p class="text-gray-500 text-sm">Real-time surplus from campus facilities.</p>
+                </div>
+                <button onclick="loadListings()" class="bg-emerald-100 text-emerald-800 px-4 py-2 rounded-lg font-semibold hover:bg-emerald-200 transition">↻ Refresh</button>
+            </div>
+            
+            <div id="foodList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </div>
+        </div>
+
+    </div>
+
+    <script>
+        window.onload = () => { switchView('admin'); };
+
+        function switchView(view) {
+            document.getElementById('admin-view').classList.add('hidden');
+            document.getElementById('recipient-view').classList.add('hidden');
+            document.getElementById(view + '-view').classList.remove('hidden');
+            
+            const btnAdmin = document.getElementById('btn-admin');
+            const btnRecipient = document.getElementById('btn-recipient');
+            
+            if (view === 'admin') {
+                btnAdmin.className = "px-6 py-2 rounded-md font-medium text-sm transition-all duration-200 tab-active shadow";
+                btnRecipient.className = "px-6 py-2 rounded-md font-medium text-sm transition-all duration-200 tab-inactive hover:bg-gray-300";
+                loadAdminDashboard();
+            } else {
+                btnRecipient.className = "px-6 py-2 rounded-md font-medium text-sm transition-all duration-200 tab-active shadow";
+                btnAdmin.className = "px-6 py-2 rounded-md font-medium text-sm transition-all duration-200 tab-inactive hover:bg-gray-300";
+                loadListings();
+            }
+        }
+
+        // --- ADMIN POST FOOD ---
+        document.getElementById('postFoodForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const payload = {
+                item_name: document.getElementById('itemName').value,
+                servings_available: parseInt(document.getElementById('servings').value),
+                fresh_for_hours: parseInt(document.getElementById('freshHours').value),
+                pickup_location: document.getElementById('location').value
+            };
+
+            const response = await fetch('/api/admin/listings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                document.getElementById('postFoodForm').reset();
+                const msg = document.getElementById('adminMessage');
+                msg.classList.remove('hidden');
+                setTimeout(() => msg.classList.add('hidden'), 3000);
+                loadAdminDashboard();
+            }
+        });
+
+        // --- ADMIN DASHBOARD ---
+        async function loadAdminDashboard() {
+            // Notice this now fetches from the new secure admin route
+            const response = await fetch('/api/admin/listings');
+            const listings = await response.json();
+            const container = document.getElementById('adminTrackerList');
+            container.innerHTML = '';
+
+            if (listings.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-300"><p class="text-gray-500 font-medium">All clear! No active surplus right now.</p></div>`;
+                return;
+            }
+
+            listings.forEach(item => {
+                let claimsHTML = '';
+                if (item.claims && item.claims.length > 0) {
+                    claimsHTML = `<div class="mt-4 pt-4 border-t border-gray-200">
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Claim Log (${item.total_servings - item.servings_available} taken)</p>
+                        <div class="space-y-2">`;
+                    
+                    item.claims.forEach(claim => {
+                        claimsHTML += `
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded text-sm">
+                                <div><span class="font-bold text-gray-700">${claim.name}</span> <span class="text-gray-500">📞 ${claim.phone}</span></div>
+                                <div class="font-semibold text-emerald-700 bg-emerald-100 px-2 py-1 rounded">Took ${claim.qty}</div>
+                            </div>`;
+                    });
+                    claimsHTML += `</div></div>`;
+                }
+
+                const statusColor = item.servings_available === 0 ? 'bg-gray-100 text-gray-400' : 'bg-white border-emerald-200 shadow-sm';
+
+                const card = document.createElement('div');
+                card.className = `p-5 rounded-xl border border-gray-100 transition ${statusColor}`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-4">
+                            <div class="h-12 w-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-xl">🍲</div>
+                            <div>
+                                <p class="font-bold text-gray-800 text-lg">${item.item_name}</p>
+                                <p class="text-xs text-gray-500 font-medium tracking-wide uppercase">Expires: <span class="text-red-500 font-bold">${item.expires_at}</span></p>
+                            </div>
+                        </div>
+                        <div class="text-right bg-emerald-50 px-4 py-2 rounded-lg">
+                            <p class="text-xl font-bold ${item.servings_available === 0 ? 'text-gray-500' : 'text-emerald-600'}">${item.servings_available} / ${item.total_servings}</p>
+                            <p class="text-xs text-emerald-800 font-semibold uppercase tracking-wider">Available</p>
+                        </div>
+                    </div>
+                    ${claimsHTML}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- RECIPIENT LISTINGS ---
+        async function loadListings() {
+            const response = await fetch('/api/recipient/listings');
+            const listings = await response.json();
+            const container = document.getElementById('foodList');
+            container.innerHTML = '';
+
+            if (listings.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 col-span-full text-center py-12">No food currently available. Check back later!</p>';
+                return;
+            }
+
+            listings.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 relative overflow-hidden group';
+                card.innerHTML = `
+                    <div class="absolute top-0 left-0 w-full h-1 bg-emerald-500 group-hover:h-2 transition-all duration-300"></div>
+                    <div class="mb-4">
+                        <div class="flex justify-between items-start mb-1">
+                            <h3 class="text-xl font-bold text-gray-800">${item.item_name}</h3>
+                        </div>
+                        <p class="text-red-500 text-xs font-bold uppercase tracking-wider mb-2">⏳ Fresh until ${item.expires_at}</p>
+                        <p class="text-gray-500 text-sm mb-2 flex items-center gap-1">📍 ${item.pickup_location}</p>
+                        <span class="inline-block bg-emerald-100 text-emerald-800 text-xs px-2 py-1 rounded font-bold uppercase tracking-wide">
+                            ${item.servings_available} Servings Left
+                        </span>
+                    </div>
+                    
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Claim Form</p>
+                        <input type="text" id="claim-name-${item.id}" placeholder="Your Full Name" class="w-full p-2 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <input type="tel" id="claim-phone-${item.id}" placeholder="Phone Number" class="w-full p-2 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                        
+                        <div class="flex gap-2 mt-2">
+                            <input type="number" id="claim-qty-${item.id}" min="1" max="${item.servings_available}" placeholder="Qty needed" class="w-1/2 p-2 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                            <button onclick="claimFood(${item.id})" class="w-1/2 bg-emerald-600 text-white font-bold p-2 text-sm rounded-lg hover:bg-emerald-700 active:scale-95 transition">Confirm</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- RECIPIENT CLAIM ACTION ---
+        async function claimFood(id) {
+            const nameInput = document.getElementById(`claim-name-${id}`).value;
+            const phoneInput = document.getElementById(`claim-phone-${id}`).value;
+            const qtyInput = document.getElementById(`claim-qty-${id}`).value;
+            const qty = parseInt(qtyInput);
+
+            if (!nameInput || !phoneInput) {
+                alert("Please provide your name and phone number to claim food.");
+                return;
+            }
+
+            if (!qty || qty <= 0) {
+                alert("Please enter a valid quantity.");
+                return;
+            }
+
+            const payload = {
+                recipient_name: nameInput,
+                recipient_phone: phoneInput,
+                servings_needed: qty
+            };
+
+            const response = await fetch(`/api/recipient/listings/${id}/claim`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                alert(`Success, ${nameInput}! You have claimed ${qty} servings.`);
+                loadListings(); 
+            } else {
+                const error = await response.json();
+                alert("Error: " + error.detail);
+            }
+        }
+    </script>
+</body>
+</html>
